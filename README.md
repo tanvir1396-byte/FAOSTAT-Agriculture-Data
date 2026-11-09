@@ -89,7 +89,6 @@ FAOSTAT-Agriculture-Data/
 ├── silver_layer.sql
 ├── gold_layer.sql
 ├── requirements.txt
-└── .gitignore
 ```
 
 ## Configuration
