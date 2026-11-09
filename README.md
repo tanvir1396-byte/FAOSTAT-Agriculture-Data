@@ -1,113 +1,114 @@
-# FAOSTAT Agriculture Data – End-to-End Data Engineering Pipeline
+# FAOSTAT Agriculture Data Engineering Pipeline
 
-An end-to-end Data Engineering project that processes FAOSTAT agricultural production datasets using **Python, Pandas, and Google BigQuery**, following the **Medallion Architecture (Bronze, Silver, and Gold)**.
+An end-to-end data engineering project that processes FAOSTAT agricultural production data using **Python, Pandas, SQL, and Google BigQuery**, following the **Medallion Architecture (Bronze, Silver, and Gold)**.
 
-The pipeline ingests raw agricultural datasets, performs data cleaning and standardization, transforms annual production data into an analytical time-series format, and builds aggregated and ranked analytical tables.
+The project focuses on data ingestion, cleaning, transformation, validation, and analytical data preparation.
 
-## 🏗️ Project Architecture
+## Project Architecture
 
-This project follows a three-layer Medallion Architecture to improve data quality, maintainability, and analytical usability.
+This project follows a three-layer data architecture to improve data quality, maintainability, and analytical usability.
 
 ### 1. Bronze Layer – Raw Data Ingestion
 
-- Ingests six FAOSTAT CSV datasets into Google BigQuery.
-- Uses Python and Pandas for CSV ingestion.
-- Automatically infers data types during CSV ingestion.
-- Cleans column names using Python Regular Expressions (RegEx).
-- Loads raw datasets into BigQuery using `replace` mode.
+- Ingests 6 FAOSTAT CSV files using Python and Pandas.
+- Reads CSV files from a configurable local directory.
+- Standardizes column names by replacing special characters.
+- Uploads raw datasets into Google BigQuery.
+- Uses `if_exists='replace'` for full-refresh loading.
+
+**Technology:** Python, Pandas, Pandas-Gbq.
 
 ### 2. Silver Layer – Data Cleaning and Standardization
 
-The Silver Layer prepares the raw datasets for analytical processing.
+The Silver Layer prepares raw datasets for reliable analysis.
 
-Key transformations include:
+Key transformations:
 
-- Standardizing column names and text values.
-- Trimming unnecessary whitespace.
-- Converting annual production columns (`Y2019`–`Y2023`) into `FLOAT64`.
-- Standardizing text fields using `LOWER()` and `UPPER()`.
-- Handling missing Area values using `COALESCE()`.
-- Removing duplicate records using `DISTINCT`.
-- Creating cleaned lookup/dimension tables for Area, Element, Flag, and Item information.
+- Casts annual production columns (Y2019–Y2023) to `FLOAT64` in both Production and NOFLAG fact tables.
+- Removes unnecessary whitespace from descriptions.
+- Standardizes Area names using uppercase formatting.
+- Standardizes Element descriptions using lowercase formatting.
+- Handles missing Area names using `COALESCE` with `UNKNOWN`.
+- Uses `DISTINCT` to create cleaned lookup tables.
 
-**Silver Tables:**
+**Silver Layer tables:**
+- Production fact table
+- NOFLAG fact table
+- Area Codes dimension table
+- Elements dimension table
+- Flags dimension table
+- Item Codes dimension table
 
-| Table | Purpose |
-|---|---|
-| `Clean_Production_Crops_Livestock_E_All_Data` | Cleaned production dataset |
-| `clean_Production_Crops_Livestock_E_All_Data_NOFLAG` | Cleaned production dataset without flag information |
-| `clean_Production_Crops_Livestock_E_AreaCodes` | Cleaned Area and M49 code mapping |
-| `clean_Production_Crops_Livestock_E_Elements` | Cleaned Element information |
-| `clean_Production_Crops_Livestock_E_Flags` | Cleaned Flag descriptions |
-| `clean_Production_Crops_Livestock_E_ItemCodes` | Cleaned Item and CPC code mapping |
+**Technology:** Google BigQuery SQL.
 
-### 3. Gold Layer – Analytical Data Modeling
+### 3. Gold Layer – Analytical Transformation
 
-The Gold Layer transforms cleaned Silver data into analytical tables designed for reporting and analysis.
+The Gold Layer creates analytical tables from the cleaned Silver data.
 
-**Gold Tables:**
+Key transformations:
 
-| Table | Purpose |
-|---|---|
-| `time_series_transformation` | Converts annual columns into a long-format time-series table and enriches records using Area, Element, and Item lookup tables |
-| `gold_Production_Crops_Livestock_E_All_Data` | Analytical time-series table derived from the transformed dataset and clustered by Area and Item |
-| `aggregation_by_region_and_year` | Aggregates Canadian agricultural production by Area, Item, and Year |
-| `top_performance_rank` | Ranks agricultural production across areas and items, separately by measurement unit |
+- Converts annual columns (Y2019–Y2023) into a long-format structure using `UNPIVOT`.
+- Extracts year values into a separate `year` column.
+- Joins Area, Element, and Item dimension tables with production data.
+- Creates Canada-specific production aggregations by Area, Item, Year, and Unit.
+- Filters production records before calculating production rankings.
+- Uses the `RANK()` window function to rank production across areas and items, partitioned by Unit.
+- Creates a clustered analytical table using `CLUSTER BY Area, Item`.
+- Reuses the transformed time-series table instead of repeating the UNPIVOT operation.
 
-**Key Gold Layer transformations:**
+**Technology:** Google BigQuery SQL.
 
-- Uses `UNPIVOT` to transform annual columns (`Y2019`–`Y2023`) into Year and Value columns.
-- Uses `LEFT JOIN` to enrich production records with lookup information.
-- Filters Canadian production records for the regional aggregation.
-- Filters the `Production` element to avoid mixing different agricultural measures.
-- Uses `SUM()` for production aggregation.
-- Uses `RANK()` with `PARTITION BY Unit` to rank production separately for each measurement unit.
-- Uses BigQuery table clustering (`CLUSTER BY Area, Item`) to organize analytical data.
+## Dataset
 
-## 📊 Dataset Scope
+**Source:** FAOSTAT – Food and Agriculture Organization of the United Nations.
 
-This project processes six FAOSTAT CSV datasets:
+The project uses 6 CSV datasets related to agricultural production, including production records and supporting lookup data.
 
-1. **Crops and Livestock Products – All Data**
-2. **Crops and Livestock Products – All Data NOFLAG**
-3. **Area Codes and M49 Mappings**
-4. **Elements and Element Codes**
-5. **Flag Descriptions**
-6. **Item Codes and CPC Codes**
+The production dataset contains annual values from 2019 to 2023.
 
-The production datasets contain annual agricultural measurements from 2019 to 2023.
+## Technology Stack
 
-## 🛠️ Technology Stack
+- Python
+- Pandas
+- Pandas-Gbq
+- Google BigQuery
+- SQL
+- Git and GitHub
 
-| Technology | Usage |
-|---|---|
-| Python | Data ingestion |
-| Pandas | CSV processing and data handling |
-| Regular Expressions | Column name standardization |
-| Google BigQuery | Cloud data warehouse |
-| SQL | Data cleaning, transformation, aggregation, and ranking |
-| Git | Version control |
-| GitHub | Source code management |
+## Project Structure
 
-## 📁 Project Configuration
+```text
+FAOSTAT-Agriculture-Data/
+│
+├── raw_data/
+│   └── 6 CSV files
+│
+├── README.md
+├── bronze_layer.py
+├── config.py
+├── silver_layer.sql
+├── gold_layer.sql
+├── requirements.txt
+└── .gitignore
+```
 
-The project uses a separate `config.py` file to manage ingestion settings.
+## Configuration
 
-Example configuration:
+Update `config.py` with your local CSV directory and Google Cloud project ID.
 
 ```python
-csv_file = r'D:\FAOSTAT Agriculture Data_project'
+csv_file = r'YOUR_LOCAL_PATH\raw_data'
+
 project_id = 'YOUR_GOOGLE_CLOUD_PROJECT_ID'
+
 dataset_name = 'Bronze_FAOSTAT_Agriculture_Data'
 ```
 
-Update the CSV directory and Google Cloud Project ID according to your environment.
+The local CSV directory and Google Cloud project ID are configurable through this file.
 
-The project configuration keeps ingestion settings separate from the main Python script.
+## Setup and Installation
 
-## 🚀 Setup and Installation
-
-### 1. Clone the Repository
+### 1. Clone the repository
 
 ```bash
 git clone https://github.com/tanvir1396-byte/FAOSTAT-Agriculture-Data.git
@@ -115,129 +116,72 @@ git clone https://github.com/tanvir1396-byte/FAOSTAT-Agriculture-Data.git
 cd FAOSTAT-Agriculture-Data
 ```
 
-### 2. Install Dependencies
-
-Make sure Python and pip are installed.
-
-Install the required Python packages:
+### 2. Install dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 3. Configure the Project
+### 3. Configure Google Cloud Authentication
 
-Update `config.py` with:
-
-- Your local FAOSTAT CSV directory.
-- Your Google Cloud Project ID.
-- Your Bronze dataset name.
-
-### 4. Authenticate with Google Cloud
-
-Make sure the Google Cloud CLI is installed and authenticated.
+Authenticate using Google Cloud Application Default Credentials:
 
 ```bash
 gcloud auth application-default login
 ```
 
-Select the appropriate Google Cloud project and ensure the account has the required BigQuery permissions.
+Make sure the authenticated Google account has the required BigQuery permissions.
 
-## ⚙️ Pipeline Execution
+### 4. Configure the project
+
+Update `config.py` with your local CSV directory and Google Cloud project ID.
+
+## Pipeline Execution
 
 Execute the pipeline in the following order:
 
-### Step 1: Bronze Layer
+**Step 1: Bronze Layer**
 
-Run the Python ingestion script to load the six CSV datasets into BigQuery.
+Run the Python ingestion script:
 
-The ingestion process:
+```bash
+python bronze_layer.py
+```
 
-1. Reads CSV files from the configured directory.
-2. Cleans column names.
-3. Loads the datasets into the Bronze dataset.
+**Step 2: Silver Layer**
 
-### Step 2: Silver Layer
+Open and execute `silver_layer.sql` in the Google BigQuery SQL Editor.
 
-Execute the Silver SQL transformations in BigQuery.
+**Step 3: Gold Layer**
 
-The Silver transformations:
+Open and execute `gold_layer.sql` in the Google BigQuery SQL Editor.
 
-- Clean and standardize production datasets.
-- Cast annual production columns to `FLOAT64`.
-- Clean Area, Element, Flag, and Item lookup tables.
-- Remove duplicate records.
+## Data Validation Results
 
-### Step 3: Gold Layer
-
-Execute the Gold SQL transformations in BigQuery.
-
-The Gold transformations:
-
-- Generate the long-format time-series table.
-- Enrich production data using lookup tables.
-- Build the Canadian production aggregation.
-- Generate unit-wise production rankings.
-- Create a clustered analytical table.
-
-## ✅ Data Quality and Validation
-
-Validation queries were executed in BigQuery to check the output of the Gold Layer transformations.
-
-**1. Time-Series Transformation**
+The following validations were performed in BigQuery after executing the pipeline.
 
 | Validation | Result |
 |---|---:|
-| Total Rows | 350,013 |
-| Distinct Years | 5 |
-| Minimum Year | 2019 |
-| Maximum Year | 2023 |
-| NULL Values in Value Column | 0 |
+| Source rows in time-series transformation | 350,013 |
+| Transformed rows | 350,013 |
+| Distinct years | 5 |
+| Year range | 2019–2023 |
+| Null production values | 0 |
+| Canada aggregation rows | 599 |
+| Non-Canada rows in Canada aggregation | 0 |
+| Top performance ranking rows | 27,719 |
+| Null ranking values | 0 |
 
-**2. Gold Analytical Table**
+Additional checks confirmed that the transformed Gold table retained the same row count as its source and that the annual production columns were stored as `FLOAT64`.
 
-The source and Gold analytical table row counts were compared.
+## Key Project Outcomes
 
-| Table | Rows |
-|---|---:|
-| Time-Series Source | 350,013 |
-| Gold Analytical Table | 350,013 |
-
-**3. Canadian Production Aggregation**
-
-| Validation | Result |
-|---|---:|
-| Total Rows | 599 |
-| Distinct Years | 5 |
-| Non-Canada Records | 0 |
-| NULL Production Values | 0 |
-
-**4. Top Performance Ranking**
-
-| Validation | Result |
-|---|---:|
-| Total Rows | 27,719 |
-| Distinct Measurement Units | 2 |
-| NULL Ranks | 0 |
-| Rank 1 Records | 2 |
-| NULL Production Values | 0 |
-
-These checks confirm the expected row counts, year coverage, filtering, and ranking output for the tested Gold tables.
-
-## 📈 Project Outcomes
-
-This project demonstrates an end-to-end agricultural data pipeline using Python and BigQuery.
-
-Key outcomes include:
-
-- Automated ingestion of six FAOSTAT datasets.
-- Structured data organization using Bronze, Silver, and Gold layers.
-- Standardized agricultural production data for analytical processing.
-- Long-format time-series transformation for annual analysis.
-- Canadian agricultural production aggregation by year and item.
-- Unit-wise production ranking across areas and items.
-- BigQuery clustering for analytical table organization.
-- Data quality validation using SQL.
-
-
+- Built a three-layer data pipeline using the Medallion Architecture.
+- Ingested 6 raw CSV datasets into BigQuery.
+- Standardized production data and supporting lookup tables.
+- Converted wide annual data into a long-format time-series structure.
+- Integrated dimension tables with production records.
+- Created Canada-specific annual production aggregations.
+- Developed production rankings using SQL window functions.
+- Improved analytical query organization through BigQuery clustering.
 
