@@ -40,7 +40,7 @@ LEFT JOIN
 ON f.Item_Code = i.Item_Code;
 
 
--- Gold Layer: Aggregate 5-year total production/value per item for Canada
+-- Aggregate annual production by item for Canada (2019–2023)
 
 CREATE OR REPLACE TABLE
 `my-project-17182-514115.gold_FAOSTAT_Agriculture_Data.aggregation_by_region_and_year` AS
